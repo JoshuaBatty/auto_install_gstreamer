@@ -1,0 +1,6 @@
+[package]
+name = "auto_install_gstreamer"
+version = "0.1.0"
+authors = ["JoshuaBatty <joshpbatty@gmail.com>"]
+
+[dependencies]
