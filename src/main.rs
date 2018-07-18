@@ -11,18 +11,18 @@ fn main() {
 fn install() {
     // Check to see if Homebrew is installed, and install if its not
     if check_for_homebrew_installation() {
+        println!("Existing Homebrew installation detected");
+    } else {
         println!("Installing Homebrew");
         run_command(install_hombrew().unwrap()).unwrap();
-    } else {
-        println!("Existing Homebrew installation detected");
     }
 
     // Once we have homebrew on the system check if gstreamer is already installed
     if check_for_gstreamer_installation() {
+        println!("Existing gstreamer package is already installed");
+    } else {
         println!("Package gstreamer is not installed, preparing to download and install");
         run_command(install_gstreamer().unwrap()).unwrap();
-    } else {
-        println!("Existing gstreamer package is already installed");
     }
 }
 
@@ -30,18 +30,18 @@ fn install() {
 fn uninstall() {
     // Check to see if Homebrew is installed, and install if its not
     if check_for_homebrew_installation() {
-        println!("There is already no Homebrew installation!");
-    } else {
         println!("Uninstallting Homebrew");
         run_command(uninstall_hombrew().unwrap()).unwrap();
+    } else {
+        println!("There is already no Homebrew installation!");
     }
 
     // Once we have homebrew on the system check if gstreamer is already installed
     if check_for_gstreamer_installation() {
-        println!("There is already no gstreamer formula installed!");
-    } else {
         println!("Uninstallting Gstreamer");
         run_command(uninstall_gstreamer().unwrap()).unwrap();
+    } else {
+        println!("There is already no gstreamer formula installed!");
     }
 }
 
@@ -63,7 +63,7 @@ fn check_for_homebrew_installation() -> bool {
         .arg("command -v brew")
         .output()
         .expect("failed to execture process");
-    String::from_utf8_lossy(&output.stdout).is_empty()
+    !String::from_utf8_lossy(&output.stdout).is_empty()
 }
 
 fn install_hombrew() -> io::Result<std::process::Child> {
@@ -97,31 +97,63 @@ fn check_for_gstreamer_installation() -> bool {
         .arg("gstreamer")
         .output()
         .expect("failed to execture process");
-    String::from_utf8_lossy(&output.stdout).is_empty()
+    !String::from_utf8_lossy(&output.stdout).is_empty()
 }
 
 fn install_gstreamer() -> io::Result<std::process::Child> {
-    let mut child = Command::new("brew");
-    let child = child
-        .arg("install")
-        .arg("gstreamer")
-        .arg("gst-plugins-base")
-        .arg("gst-plugins-good")
-        .arg("gst-plugins-bad")
-        .arg("gst-plugins-ugly")
-        .arg("gst-libav")
-        .arg("gst-rtsp-server")
-        .arg("--with-orc")
-        .arg("-with-libogg")
-        .arg("--with-opus")
-        .arg("--with-pango")
-        .arg("--with-theora")
-        .arg("--with-libvorbis")
-        .stderr(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn();
-
-    child
+    if cfg!(target_os = "macos") {
+        let mut child = Command::new("brew");
+        let child = child
+            .arg("install")
+            .arg("gstreamer")
+            .arg("gst-plugins-base")
+            .arg("gst-plugins-good")
+            .arg("gst-plugins-bad")
+            .arg("gst-plugins-ugly")
+            .arg("gst-libav")
+            .arg("gst-rtsp-server")
+            .arg("--with-orc")
+            .arg("-with-libogg")
+            .arg("--with-opus")
+            .arg("--with-pango")
+            .arg("--with-theora")
+            .arg("--with-libvorbis")
+            .stderr(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn();
+        child
+    } else if cfg!(target_os = "windows") {
+        let mut child = Command::new("pacman");
+        let child = child
+            .arg("-S")
+            .arg("pkg-config")
+            .arg("mingw-w64-x86_64-gstreamer")
+            .arg("mingw-w64-x86_64-gst-plugins-base")
+            .arg("mingw-w64-x86_64-gst-plugins-good")
+            .arg("mingw-w64-x86_64-gst-plugins-bad")
+            .arg("mingw-w64-x86_64-gst-plugins-ugly")
+            .arg("mingw-w64-x86_64-gst-libav")
+            .arg("mingw-w64-x86_64-gst-rtsp-server")
+            .stderr(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn();
+        child
+    } else if cfg!(target_os = "linux") {
+        let mut child = Command::new("apt-get");
+        let child = child
+            .arg("install")
+            .arg("libgstreamer1.0-dev")
+            .arg("libgstreamer-plugins-base1.0-dev")
+            .arg("gstreamer1.0-plugins-base gstreamer1.0-plugins-good")
+            .arg("gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly")
+            .arg("gstreamer1.0-libav libgstrtspserver-1.0-dev")
+            .stderr(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn();
+        child
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, "OS not supported"))
+    }
 }
 
 fn uninstall_gstreamer() -> io::Result<std::process::Child> {
